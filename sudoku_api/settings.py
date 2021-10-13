@@ -5,6 +5,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = environ.get("DEBUG", "False") == "True"
 SECRET_KEY = environ.get("SECRET", "secret")
 ALLOWED_HOSTS = ["*"]
+AUTHORIZATION_URL = (
+    environ.get("AUTHORIZATION_URL") or "http://localhost:3000/api/accounts/")
 
 
 INSTALLED_APPS = [

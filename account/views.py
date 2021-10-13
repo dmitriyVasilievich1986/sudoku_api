@@ -1,31 +1,12 @@
+from rest_framework.viewsets import ModelViewSet
 from django.shortcuts import get_object_or_404
-from .models import Account
+from .permissions import UserByTokenPermission
+from rest_framework import response, status
 from .serializer import AccountSerializer
-from rest_framework.viewsets import ViewSet, ModelViewSet
-from rest_framework import exceptions, serializers
-from rest_framework.decorators import action
-from rest_framework import permissions, response, status
+from rest_framework import exceptions
+from django.conf import settings
+from .models import Account
 import requests
-from os import environ
-
-AUTHORIZATION_URL = (
-    environ.get("AUTHORIZATION_URL") or "http://localhost:3000/api/accounts/")
-
-
-class UserByTokenPermission(permissions.BasePermission):
-    def has_permission(self, request, view, *args, **kwargs) -> dict:
-        if request.method == "POST":
-            return True
-        token: str = request.META.get("HTTP_AUTHORIZATION", "")
-        if token is None or token == "":
-            raise exceptions.NotAuthenticated
-        headers: dict = {"Authorization": token}
-        r: requests.Response = requests.get(AUTHORIZATION_URL, headers=headers)
-        if r.status_code != 200:
-            raise exceptions.NotAuthenticated
-        user: dict = r.json()
-        request.user = user
-        return True
 
 
 class AccountViewSet(ModelViewSet):
@@ -70,7 +51,7 @@ class AccountViewSet(ModelViewSet):
             raise exceptions.NotAuthenticated
         headers = {"Authorization": f"token {user['token']}"}
         r = requests.delete(
-            f"{AUTHORIZATION_URL}{instance.id}/", headers=headers)
+            f"{settings.AUTHORIZATION_URL}{instance.id}/", headers=headers)
         if r.status_code != 204:
             raise exceptions.APIException
         instance.delete()
@@ -78,7 +59,7 @@ class AccountViewSet(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         instance = Account.create(**request.data)
-        r = requests.post(AUTHORIZATION_URL, data=request.data)
+        r = requests.post(settings.AUTHORIZATION_URL, data=request.data)
         if r.status_code != 201:
             return response.Response(data=r.json(), status=r.status_code)
         new_user = r.json()
