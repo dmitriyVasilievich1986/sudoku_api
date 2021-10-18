@@ -7,6 +7,7 @@ from rest_framework import exceptions
 from django.conf import settings
 from .models import Account
 import requests
+import json
 
 
 class AccountViewSet(ModelViewSet):
@@ -58,13 +59,14 @@ class AccountViewSet(ModelViewSet):
         return response.Response(status=status.HTTP_204_NO_CONTENT)
 
     def create(self, request, *args, **kwargs):
-        instance = Account.create(**request.data)
+        serializer: AccountSerializer = self.get_serializer(
+            data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
         r = requests.post(settings.AUTHORIZATION_URL, data=request.data)
         if r.status_code != 201:
             return response.Response(data=r.json(), status=r.status_code)
         new_user = r.json()
-        instance.id = new_user["id"]
-        instance.save()
-        serializer = self.get_serializer(instance)
+        instance: Account = serializer.save_with_id(**new_user)
+        serializer: AccountSerializer = self.get_serializer(instance)
         headers = self.get_success_headers(serializer.data)
         return response.Response({**new_user, **serializer.data}, status=status.HTTP_201_CREATED, headers=headers)
